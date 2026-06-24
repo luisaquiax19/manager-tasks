@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Tracker - Gestor de Tareas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilos base y transiciones */
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .hidden-view { display: none !important; }
+    </style>
+</head>
+<body class="text-gray-800 h-screen flex flex-col">
+
+    <!-- Navbar -->
+    <header class="bg-blue-600 text-white shadow-md p-4 flex justify-between items-center">
+        <h1 class="text-xl font-bold flex items-center gap-2">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            Time Tracker
+        </h1>
+        <button onclick="UI.showCreateModal()" class="bg-white text-blue-600 px-4 py-2 rounded-md font-medium hover:bg-blue-50 transition">
+            + Nueva Tarea
+        </button>
+    </header>
+
+    <!-- Contenedor Principal -->
+    <main class="flex-1 overflow-auto p-6 max-w-6xl mx-auto w-full">
+
+        <!-- VISTA 1: Dashboard (Listado de Tareas) -->
+        <div id="dashboardView" class="fade-in">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Columna: En Progreso -->
+                <div class="bg-white rounded-lg shadow p-4 border-t-4 border-blue-500">
+                    <h2 class="font-bold text-lg mb-4 text-blue-600">▶ En Progreso</h2>
+                    <div id="tasksInProgress" class="space-y-3"></div>
+                </div>
+
+                <!-- Columna: En Pausa -->
+                <div class="bg-white rounded-lg shadow p-4 border-t-4 border-gray-400">
+                    <h2 class="font-bold text-lg mb-4 text-gray-600">⏸ En Pausa</h2>
+                    <div id="tasksPaused" class="space-y-3"></div>
+                </div>
+
+                <!-- Columna: Finalizadas -->
+                <div class="bg-white rounded-lg shadow p-4 border-t-4 border-green-500">
+                    <h2 class="font-bold text-lg mb-4 text-green-600">✔ Finalizadas</h2>
+                    <div id="tasksCompleted" class="space-y-3"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VISTA 2: Detalle de la Tarea -->
+        <div id="taskDetailView" class="hidden-view fade-in max-w-3xl mx-auto">
+            <button onclick="UI.showDashboard()" class="mb-4 text-blue-600 hover:underline flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                Volver al panel
+            </button>
+
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h2 id="detailTitle" class="text-2xl font-bold text-gray-900">Título de Tarea</h2>
+                        <p id="detailDesc" class="text-gray-600 mt-2">Descripción...</p>
+                    </div>
+                    <span id="detailStatusBadge" class="px-3 py-1 rounded-full text-sm font-semibold">Estado</span>
+                </div>
+
+                <!-- Cronómetro -->
+                <div class="bg-gray-50 rounded-xl p-8 text-center my-6 border border-gray-200">
+                    <div id="stopwatchDisplay" class="text-6xl font-mono font-bold text-gray-800 mb-6">
+                        00:00:00
+                    </div>
+                    <div class="flex justify-center gap-4">
+                        <button id="btnStart" onclick="Timer.start()" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full font-bold shadow-lg transition flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            Iniciar
+                        </button>
+                        <button id="btnPause" onclick="Timer.pause()" class="hidden bg-yellow-500 hover:bg-yellow-600 text-white px-8 py-3 rounded-full font-bold shadow-lg transition flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            Pausar
+                        </button>
+                        <button id="btnComplete" onclick="Timer.completeTask()" class="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-full font-bold shadow-lg transition flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            Finalizar Tarea
+                        </button>
+                        <button id="btnDeleteTask" onclick="UI.showDeleteConfirm(Timer.currentTaskId, document.getElementById('detailTitle').innerText)" class="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-full font-bold shadow-lg transition flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.137 21H7.863a2 2 0 01-1.996-1.858L5 7m5-4h4m-6 4h8m-9 0l1 12m4-12l1 12"></path></svg>
+                            Eliminar Tarea
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Resumen de Tiempo -->
+                <div class="border-t pt-4">
+                    <h3 class="text-lg font-bold mb-2">Total de tiempo invertido:</h3>
+                    <p id="totalTimeDisplay" class="text-2xl font-mono text-blue-600">00:00:00</p>
+                </div>
+            </div>
+
+            <!-- Historial de Registros -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-bold mb-4">Historial de Registros</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-left text-sm whitespace-nowrap">
+                        <thead class="uppercase tracking-wider border-b-2 border-gray-200 bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3">Fecha</th>
+                                <th class="px-4 py-3">Hora Inicio</th>
+                                <th class="px-4 py-3">Hora Fin</th>
+                                <th class="px-4 py-3">Tiempo Invertido</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logsTableBody" class="divide-y divide-gray-200">
+                            <!-- Los registros se llenan con JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Crear Tarea -->
+    <div id="createModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden-view z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h2 class="text-xl font-bold mb-4">Crear Nueva Tarea</h2>
+            <form id="createTaskForm" onsubmit="UI.handleCreateTask(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Título *</label>
+                    <input type="text" id="taskTitle" required class="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Descripción (Opcional)</label>
+                    <textarea id="taskDesc" rows="3" class="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" onclick="UI.hideCreateModal()" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Mensaje (Reemplazo de alert) -->
+    <div id="messageModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden-view z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 text-center">
+            <p id="messageText" class="text-gray-800 text-lg mb-6"></p>
+            <button onclick="document.getElementById('messageModal').classList.add('hidden-view')" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Entendido</button>
+        </div>
+    </div>
+
+    <!-- Modal Confirmación Eliminar -->
+    <div id="confirmDeleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden-view z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h2 class="text-xl font-bold text-gray-900 mb-2">Eliminar tarea</h2>
+            <p id="confirmDeleteText" class="text-gray-600 mb-6">¿Seguro que deseas eliminar esta tarea?</p>
+            <div class="flex justify-end gap-3">
+                <button type="button" onclick="UI.hideDeleteConfirm()" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancelar</button>
+                <button type="button" onclick="UI.confirmDeleteTask()" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Si el HTML se abre como `file://` usamos el servidor local como base
+        const API_BASE = (function(){
+            try {
+                // Si la página fue servida por http/https, usar origen actual
+                if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+                    return '';
+                }
+            } catch (e) {}
+            // Fallback al servidor local cuando se abre desde file://
+            return 'http://localhost:3000';
+        })();
+
+        const requestJSON = async (path, options = {}) => {
+            const response = await fetch(`${API_BASE}${path}`, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(options.headers || {})
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            return await response.json();
+        };
+
+        const DB = {
+            api: {
+                getTasks: async () => {
+                    return await requestJSON('/api/tasks');
+                },
+                createTask: async (title, description) => {
+                    return await requestJSON('/api/tasks', {
+                        method: 'POST',
+                        body: JSON.stringify({ title, description })
+                    });
+                },
+                updateTaskStatus: async (taskId, status) => {
+                    await requestJSON(`/api/tasks/${taskId}/status`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ status })
+                    });
+                },
+                saveTimeLog: async (taskId, startTime, endTime, durationSeconds) => {
+                    await requestJSON('/api/logs', {
+                        method: 'POST',
+                        body: JSON.stringify({ taskId, startTime, endTime, durationSeconds })
+                    });
+                },
+                getTaskLogs: async (taskId) => {
+                    return await requestJSON(`/api/tasks/${taskId}/logs`);
+                },
+                deleteTask: async (taskId) => {
+                    return await requestJSON(`/api/tasks/${taskId}`, {
+                        method: 'DELETE'
+                    });
+                }
+            }
+        };
+
+        /**
+         * LÓGICA DEL CRONÓMETRO Y ESTADO DE LA TAREA ACTUAL
+         */
+        const Timer = {
+            currentTaskId: null,
+            intervalId: null,
+            sessionStartTime: null,
+            currentSessionSeconds: 0,
+
+            formatTime: (totalSeconds) => {
+                const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+                const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+                const s = String(totalSeconds % 60).padStart(2, '0');
+                return `${h}:${m}:${s}`;
+            },
+
+            start: async () => {
+                if(!Timer.currentTaskId) return;
+
+                Timer.sessionStartTime = new Date();
+                Timer.currentSessionSeconds = 0;
+
+                await DB.api.updateTaskStatus(Timer.currentTaskId, 'en_progreso');
+                UI.updateButtons('en_progreso');
+                UI.updateTaskStatusBadge('en_progreso');
+
+                Timer.intervalId = setInterval(() => {
+                    Timer.currentSessionSeconds++;
+                    document.getElementById('stopwatchDisplay').innerText = Timer.formatTime(Timer.currentSessionSeconds);
+                }, 1000);
+            },
+
+            pause: async () => {
+                if(!Timer.intervalId) return;
+
+                clearInterval(Timer.intervalId);
+                Timer.intervalId = null;
+                const endTime = new Date();
+
+                // Guardar el registro en la base de datos (simulada)
+                if(Timer.currentSessionSeconds > 0) {
+                    await DB.api.saveTimeLog(
+                        Timer.currentTaskId,
+                        Timer.sessionStartTime,
+                        endTime,
+                        Timer.currentSessionSeconds
+                    );
+                }
+
+                await DB.api.updateTaskStatus(Timer.currentTaskId, 'en_pausa');
+
+                Timer.currentSessionSeconds = 0;
+                document.getElementById('stopwatchDisplay').innerText = "00:00:00";
+
+                UI.updateButtons('en_pausa');
+                UI.updateTaskStatusBadge('en_pausa');
+                UI.loadTaskDetails(Timer.currentTaskId); // Recargar la tabla y el total
+            },
+
+            completeTask: async () => {
+                // Si el cronómetro está corriendo, lo pausamos primero para guardar el tiempo
+                if(Timer.intervalId) {
+                    await Timer.pause();
+                }
+                await DB.api.updateTaskStatus(Timer.currentTaskId, 'finalizada');
+                UI.updateButtons('finalizada');
+                UI.updateTaskStatusBadge('finalizada');
+                showMessage("¡Tarea finalizada con éxito!");
+            }
+        };
+
+        /**
+         * LÓGICA DE INTERFAZ DE USUARIO (UI)
+         */
+        const UI = {
+            pendingDeleteTaskId: null,
+
+            init: () => {
+                UI.showDashboard();
+            },
+
+            showMessage: (text) => {
+                document.getElementById('messageText').innerText = text;
+                document.getElementById('messageModal').classList.remove('hidden-view');
+            },
+
+            showDeleteConfirm: (taskId, taskTitle) => {
+                UI.pendingDeleteTaskId = taskId;
+                document.getElementById('confirmDeleteText').innerText = `¿Seguro que deseas eliminar la tarea “${taskTitle}”? Esta acción no se puede deshacer.`;
+                document.getElementById('confirmDeleteModal').classList.remove('hidden-view');
+            },
+
+            hideDeleteConfirm: () => {
+                UI.pendingDeleteTaskId = null;
+                document.getElementById('confirmDeleteModal').classList.add('hidden-view');
+            },
+
+            confirmDeleteTask: async () => {
+                if (!UI.pendingDeleteTaskId) return;
+
+                const taskId = UI.pendingDeleteTaskId;
+                try {
+                    await DB.api.deleteTask(taskId);
+                    UI.hideDeleteConfirm();
+                    Timer.currentTaskId = null;
+                    document.getElementById('taskDetailView').classList.add('hidden-view');
+                    document.getElementById('dashboardView').classList.remove('hidden-view');
+                    await UI.showDashboard();
+                    UI.showMessage('Tarea eliminada correctamente');
+                } catch (error) {
+                    UI.hideDeleteConfirm();
+                    UI.showMessage('No se pudo eliminar la tarea');
+                }
+            },
+
+            showCreateModal: () => {
+                document.getElementById('createTaskForm').reset();
+                document.getElementById('createModal').classList.remove('hidden-view');
+            },
+
+            hideCreateModal: () => {
+                document.getElementById('createModal').classList.add('hidden-view');
+            },
+
+            handleCreateTask: async (e) => {
+                e.preventDefault();
+                const title = document.getElementById('taskTitle').value;
+                const desc = document.getElementById('taskDesc').value;
+
+                await DB.api.createTask(title, desc);
+                UI.hideCreateModal();
+                UI.showDashboard();
+                UI.showMessage("Tarea creada correctamente");
+            },
+
+            showDashboard: async () => {
+                // Si venimos de un detalle con el cronómetro corriendo, forzamos pausa
+                if(Timer.intervalId) {
+                    await Timer.pause();
+                }
+
+                document.getElementById('taskDetailView').classList.add('hidden-view');
+                document.getElementById('dashboardView').classList.remove('hidden-view');
+
+                let tasks = [];
+                try {
+                    tasks = await DB.api.getTasks();
+                } catch (error) {
+                    UI.showMessage('No se pudo cargar la base de datos');
+                    return;
+                }
+
+                const inProgress = tasks.filter(t => t.status === 'en_progreso');
+                const paused = tasks.filter(t => t.status === 'en_pausa');
+                const completed = tasks.filter(t => t.status === 'finalizada');
+
+                const createCard = (t) => `
+                    <div onclick="UI.loadTaskDetails(${t.id})" class="border rounded-md p-3 cursor-pointer hover:shadow-md transition bg-gray-50 hover:bg-white relative">
+                        <button onclick="event.stopPropagation(); UI.showDeleteConfirm(${t.id}, ${JSON.stringify(t.title)})" class="absolute top-2 right-2 text-red-600 hover:text-red-700 text-sm font-semibold px-2 py-1 rounded hover:bg-red-50">
+                            Eliminar
+                        </button>
+                        <h3 class="font-bold text-gray-800 pr-20">${t.title}</h3>
+                        <p class="text-sm text-gray-500 truncate">${t.description || 'Sin descripción'}</p>
+                    </div>
+                `;
+
+                document.getElementById('tasksInProgress').innerHTML = inProgress.length ? inProgress.map(createCard).join('') : '<p class="text-sm text-gray-400">No hay tareas</p>';
+                document.getElementById('tasksPaused').innerHTML = paused.length ? paused.map(createCard).join('') : '<p class="text-sm text-gray-400">No hay tareas</p>';
+                document.getElementById('tasksCompleted').innerHTML = completed.length ? completed.map(createCard).join('') : '<p class="text-sm text-gray-400">No hay tareas</p>';
+            },
+
+            loadTaskDetails: async (taskId) => {
+                Timer.currentTaskId = taskId;
+                const tasks = await DB.api.getTasks();
+                const task = tasks.find(t => t.id === taskId);
+
+                if(!task) return;
+
+                document.getElementById('dashboardView').classList.add('hidden-view');
+                document.getElementById('taskDetailView').classList.remove('hidden-view');
+
+                document.getElementById('detailTitle').innerText = task.title;
+                document.getElementById('detailDesc').innerText = task.description || 'Sin descripción proporcionada.';
+                document.getElementById('confirmDeleteText').innerText = `¿Seguro que deseas eliminar la tarea “${task.title}”? Esta acción no se puede deshacer.`;
+
+                UI.updateTaskStatusBadge(task.status);
+                UI.updateButtons(task.status);
+                document.getElementById('stopwatchDisplay').innerText = "00:00:00"; // Reset visual
+
+                // Cargar historial de tiempo
+                const logs = await DB.api.getTaskLogs(taskId);
+                const tbody = document.getElementById('logsTableBody');
+
+                let totalSeconds = 0;
+
+                if(logs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-4 text-center text-gray-500">No hay registros de tiempo aún.</td></tr>';
+                } else {
+                    tbody.innerHTML = logs.map(log => {
+                        totalSeconds += log.durationSeconds;
+                        const start = new Date(log.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+                        const end = new Date(log.endTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+                        const duration = Timer.formatTime(log.durationSeconds);
+
+                        return `
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-3">${log.logDate}</td>
+                                <td class="px-4 py-3">${start}</td>
+                                <td class="px-4 py-3">${end}</td>
+                                <td class="px-4 py-3 font-mono">${duration}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+
+                // Mostrar total de tiempo invertido
+                document.getElementById('totalTimeDisplay').innerText = Timer.formatTime(totalSeconds);
+            },
+
+            updateButtons: (status) => {
+                const btnStart = document.getElementById('btnStart');
+                const btnPause = document.getElementById('btnPause');
+                const btnComplete = document.getElementById('btnComplete');
+                const detailDeleteButton = document.getElementById('btnDeleteTask');
+
+                btnStart.classList.add('hidden');
+                btnPause.classList.add('hidden');
+                btnComplete.classList.remove('hidden');
+                detailDeleteButton.classList.remove('hidden');
+
+                if (status === 'en_progreso') {
+                    btnPause.classList.remove('hidden');
+                    btnStart.classList.add('hidden');
+                } else if (status === 'en_pausa') {
+                    btnStart.classList.remove('hidden');
+                    btnPause.classList.add('hidden');
+                } else if (status === 'finalizada') {
+                    btnStart.classList.add('hidden');
+                    btnPause.classList.add('hidden');
+                    btnComplete.classList.add('hidden'); // Opcional: Ocultar si ya está completada
+                }
+            },
+
+            updateTaskStatusBadge: (status) => {
+                const badge = document.getElementById('detailStatusBadge');
+                badge.className = 'px-3 py-1 rounded-full text-sm font-semibold'; // Reset
+
+                if (status === 'en_progreso') {
+                    badge.innerText = 'En Progreso';
+                    badge.classList.add('bg-blue-100', 'text-blue-800');
+                } else if (status === 'en_pausa') {
+                    badge.innerText = 'En Pausa';
+                    badge.classList.add('bg-gray-100', 'text-gray-800');
+                } else {
+                    badge.innerText = 'Finalizada';
+                    badge.classList.add('bg-green-100', 'text-green-800');
+                }
+            }
+        };
+
+        // Función global para reemplazar el alert
+        window.showMessage = UI.showMessage;
+
+        // Iniciar aplicación
+        window.onload = UI.init;
+    </script>
+</body>
+</html>
